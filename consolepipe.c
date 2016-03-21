@@ -30,6 +30,23 @@ int main(int argc, char **argv)
     curs_set(0);
     scrollok(stdscr, 1);
 
+    int krnlhl = A_BOLD;
+
+    if (has_colors())
+    {
+	start_color();
+	if (use_default_colors() == ERR)
+	{
+	    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+	}
+	else
+	{
+	    init_pair(1, COLOR_BLACK, -1);
+	}
+	krnlhl |= COLOR_PAIR(1);
+    }
+
+
     int failcount = 0;
     while (1)
     {
@@ -41,10 +58,10 @@ int main(int argc, char **argv)
             else
             {
                 failcount = ERR_SECONDS;
-                attron(A_BOLD);
+                standout();
                 printw("ERROR: cannot open pipe `%s' for reading: %s\n",
                         argv[1], strerror(errno));
-                attroff(A_BOLD);
+                standend();
 		refresh();
             }
             sleep(1);
@@ -54,16 +71,10 @@ int main(int argc, char **argv)
 	failcount = 0;
         while (fgets(buf, 1024, pipef))
         {
-	    int iskern = (strlen(buf) < 20
-		    || buf[3] != ' '
-		    || !isdigit(buf[4])
-		    || !isdigit(buf[5])
-		    || buf[6] != ' '
-	       );
-
-	    if (iskern) attron(A_BOLD);
+	    int iskern = (int)strstr(buf, " kernel: ");
+	    if (iskern) attrset(krnlhl);
             addstr(buf);
-	    if (iskern) attroff(A_BOLD);
+	    if (iskern) attrset(A_NORMAL);
             refresh();
         }
         fclose(pipef);
