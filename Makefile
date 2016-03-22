@@ -1,18 +1,20 @@
-BINS:= consolepipe pipewrite
+BINS:= bin/consolepipe bin/pipewrite
 
 all: $(BINS)
 
-consolepipe: consolepipe.c
-	$(CC) $(CFLAGS) -oconsolepipe -lcurses consolepipe.c
+bin/consolepipe: src/consolepipe.c
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -o$@ -lcurses $>
 
-pipewrite: pipewrite.c
-	$(CC) $(CFLAGS) -opipewrite -lcurses pipewrite.c
+bin/pipewrite: src/pipewrite.c
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -o$@ $>
 
 strip: $(BINS)
 	strip --strip-all $(BINS)
 
 clean:
-	rm -f $(BINS)
+	rm -fr bin
 
 .PHONY: all strip clean
 
