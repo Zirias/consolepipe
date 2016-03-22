@@ -3,13 +3,29 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include "usockservice.h"
 
 char buf[1024];
-FILE *pipef = 0;
+sig_atomic_t running = 1;
+
+static void sighdl(int signum)
+{
+    (void)signum;
+    running = 0;
+}
 
 int main(int argc, char **argv)
 {
+    struct sigaction sigact;
+    memset(&sigact, 0, sizeof(sigact));
+    sigact.sa_handler = sighdl;
+    sigaction(SIGPIPE, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
+    sigaction(SIGINT, &sigact, NULL);
+
+    int rc = EXIT_SUCCESS;
+
     if (argc != 2)
     {
         fprintf(stderr, "Usage: %s /path/to/socket\n", argv[0]);
@@ -27,22 +43,21 @@ int main(int argc, char **argv)
     UsockService_RegisterCustomFd(usock, STDIN_FILENO);
 
     UsockEvent *ev = UsockEvent_Create();
-
-    while (1)
+    while (running)
     {
 	UsockService_PollEvent(usock, ev);
-	if (UsockEvent_Type(ev) == UET_CustomFd)
+	if (running && UsockEvent_Type(ev) == UET_CustomFd)
 	{
-	    if (!fgets(buf, 1024, stdin))
+	    if (fgets(buf, 1024, stdin))
 	    {
-		fprintf(stderr, "Error reading input: %s",
-			strerror(errno));
-		return EXIT_FAILURE;
+		UsockService_Broadcast(usock, buf, strlen(buf));
 	    }
-	    UsockService_Broadcast(usock, buf, strlen(buf));
 	}
     }
 
-    return EXIT_SUCCESS;
+cleanup:
+    UsockEvent_Destroy(ev);
+    UsockService_Destroy(usock);
+    return rc;
 }
 

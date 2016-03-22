@@ -52,6 +52,7 @@ UsockService_Create(const char *path)
     strcpy(addr.sun_path, path);
 
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) return 0;
+    if (listen(fd, 16) < 0) return 0;
 
     UsockService *self = malloc(sizeof(UsockService));
     self->path = path;
@@ -163,8 +164,8 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 	{
 	    ev->fd = c->fd;
 	    ev->type = UET_ClientConnected;
-	    return;
 	}
+	return;
     }
 
     UsockCustomFd *cfd = self->customFds;
@@ -177,11 +178,14 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 	    ev->type = UET_CustomFd;
 	    return;
 	}
+	cfd = cfd->next;
     }
 
-    UsockClient *c = self->clients;
-    while (c)
+    UsockClient *client = self->clients;
+    while (client)
     {
+	UsockClient *c = client;
+	client = client->next;
 	if (FD_ISSET(c->fd, &(ev->fds)))
 	{
 	    FD_CLR(c->fd, &(ev->fds));
@@ -192,10 +196,11 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 		ev->type = UET_ClientData;
 		return;
 	    }
-	    else
+	    else if (errno != EINTR)
 	    {
 		UsockService_Disconnect(self, c);
 	    }
+	    else return;
 	}
     }
 
@@ -208,6 +213,7 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
     int nfds = 0;
 
     UsockService_NextEvent(self, ev);
+    if (errno == EINTR) return;
     while (ev->type == UET_None)
     {
 	FD_ZERO(&(ev->fds));
@@ -231,7 +237,9 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
 	}
 
 	select(nfds+1, &(ev->fds), 0, 0, 0);
+	if (errno == EINTR) return;
 	UsockService_NextEvent(self, ev);
+	if (errno == EINTR) return;
     }
 }
 
@@ -245,6 +253,7 @@ UsockService_Broadcast(UsockService *self, const char *buf, size_t length)
 	client = client->next;
 	if (send(c->fd, buf, length, 0) < 0)
 	{
+	    if (errno == EINTR) return;
 	    UsockService_Disconnect(self, c);
 	}
     }
