@@ -1,12 +1,12 @@
-BINS:= bin/consolepipe bin/pipewrite
+BINS:= bin/xcons_service bin/xcons_curses
 
 all: $(BINS)
 
-bin/consolepipe: src/consolepipe.c
+bin/xcons_curses: src/xcons_curses.c
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o$@ -lcurses $>
 
-bin/pipewrite: src/pipewrite.c src/usockservice.c
+bin/xcons_service: src/xcons_service.c src/usockservice.c
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o$@ $>
 
