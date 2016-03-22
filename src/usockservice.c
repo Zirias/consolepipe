@@ -52,28 +52,80 @@ UsockService_Create(const char *path)
     return self;
 }
 
+static UsockClient *
+UsockService_Accept(UsockService *self)
+{
+    int fd = accept(self->fd, 0, 0);
+    if (fd < 0) return 0;
+
+    UsockClient *client = malloc(sizeof(UsockClient));
+    client->next = 0;
+    client->fd = fd;
+
+    if (self->clients)
+    {
+	UsockClient *prev = self->clients;
+	while (prev->next) prev = prev->next;
+	prev->next = client;
+    }
+    else
+    {
+	self->clients = client;
+    }
+
+    return client;
+}
+
+static void
+UsockService_NextEvent(UsockService *self, UsockEvent *ev)
+{
+    if (FD_ISSET(self->fd, &(ev->fds)))
+    {
+	FD_CLR(self->fd, &(ev->fds));
+	UsockClient *c = UsockService_Accept(self);
+	if (c)
+	{
+	    ev->fd = c->fd;
+	    ev->type = UET_ClientConnected;
+	    return;
+	}
+    }
+
+    UsockClient *c = self->clients;
+    while (c)
+    {
+	if (FD_ISSET(c->fd, &(ev->fds)))
+	{
+	    FD_CLR(c->fd, &(ev->fds));
+	    ev->fd = c->fd;
+	    ev->type = UET_ClientData;
+	    return;
+	}
+    }
+
+    ev->type = UET_None;
+}
+
 void
 UsockService_PollEvent(UsockService *self, UsockEvent *ev)
 {
-    fd_set rfds;
     int nfds = 0;
 
-    FD_ZERO(&rfds);
-    FD_SET(self->fd, &rfds);
+    UsockService_NextEvent(self, ev);
+    if (ev->type != UET_None) return;
+
+    FD_ZERO(&(ev->fds));
+    FD_SET(self->fd, &(ev->fds));
     nfds = self->fd;
 
     UsockClient *c = self->clients;
     while (c)
     {
-	FD_SET(c->fd, &rfds);
+	FD_SET(c->fd, &(ev->fds));
 	nfds = c->fd > nfds ? c->fd : nfds;
 	c = c->next;
     }
 
-    select(nfds+1, &rfds, 0, 0, 0);
-
-    if (FD_ISSET(self->fd, &rfds))
-    {
-	ev->type = UET_ClientConnected;
-    }
+    select(nfds+1, &(ev->fds), 0, 0, 0);
+    UsockService_NextEvent(self, ev);
 }
