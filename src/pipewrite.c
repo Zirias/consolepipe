@@ -3,8 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <signal.h>
-#include <fcntl.h>
+#include "usockservice.h"
 
 char buf[1024];
 FILE *pipef = 0;
@@ -13,54 +12,36 @@ int main(int argc, char **argv)
 {
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: %s /path/to/fifo\n", argv[0]);
+        fprintf(stderr, "Usage: %s /path/to/socket\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    struct sigaction sigact;
-    memset(&sigact, 0, sizeof(sigact));
-    sigact.sa_handler = SIG_IGN;
-    sigact.sa_flags = SA_RESTART;
-    sigaction(SIGPIPE, &sigact, NULL);
-
-    pipef = fopen(argv[1], "w");
-
-    if (!pipef)
+    UsockService *usock = UsockService_Create(argv[1]);
+    if (!usock)
     {
-        fprintf(stderr, "Cannot open `%s' for writing: %s\n",
+        fprintf(stderr, "Cannot open socket `%s': %s\n",
                 argv[1], strerror(errno));
         return EXIT_FAILURE;
     }
 
-    while (fgets(buf, 1024, stdin))
-    {
-	int rc;
-	while ((rc = fputs(buf, pipef)) < 0)
-	{
-	    if (errno == EPIPE)
-	    {
-		fclose(pipef);
-		pipef = fopen(argv[1], "w");
+    UsockService_RegisterCustomFd(usock, STDIN_FILENO);
 
-		if (!pipef)
-		{
-		    fprintf(stderr, "Cannot open `%s' for writing: %s\n",
-			    argv[1], strerror(errno));
-		    return EXIT_FAILURE;
-		}
-	    }
-	    else
+    UsockEvent *ev = UsockEvent_Create();
+
+    while (1)
+    {
+	UsockService_PollEvent(usock, ev);
+	if (UsockEvent_Type(ev) == UET_CustomFd)
+	{
+	    if (!fgets(buf, 1024, stdin))
 	    {
-		fprintf(stderr, "Error writing to `%s': %s\n",
-			argv[1], strerror(errno));
-		fclose(pipef);
+		fprintf(stderr, "Error reading input: %s",
+			strerror(errno));
 		return EXIT_FAILURE;
 	    }
+	    UsockService_Broadcast(usock, buf, strlen(buf));
 	}
-	fflush(pipef);
     }
-
-    fclose(pipef);
 
     return EXIT_SUCCESS;
 }

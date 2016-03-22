@@ -22,7 +22,7 @@ void UsockService_Broadcast(UsockService *self, const char *buf, size_t length);
 void UsockService_Destroy(UsockService *self);
 
 UsockEvent *UsockEvent_Create(void);
-UsockEventType *UsockEvent_Type(const UsockEvent *self);
+UsockEventType UsockEvent_Type(const UsockEvent *self);
 int UsockEvent_Fd(const UsockEvent *self);
 void UsockEvent_Destroy(UsockEvent *self);
 

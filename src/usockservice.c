@@ -276,3 +276,32 @@ UsockService_Destroy(UsockService *self)
     unlink(self->path);
     free(self);
 }
+
+UsockEvent *
+UsockEvent_Create(void)
+{
+    UsockEvent *self = malloc(sizeof(UsockEvent));
+    self->type = UET_None;
+    FD_ZERO(&(self->fds));
+    self->fd = -1;
+    return self;
+}
+
+UsockEventType
+UsockEvent_Type(const UsockEvent *self)
+{
+    return self->type;
+}
+
+int
+UsockEvent_Fd(const UsockEvent *self)
+{
+    return self->fd;
+}
+
+void
+UsockEvent_Destroy(UsockEvent *self)
+{
+    if (!self) return;
+    free(self);
+}
