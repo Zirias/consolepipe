@@ -15,6 +15,14 @@ struct UsockClient
     int fd;
 };
 
+typedef struct UsockCustomFd UsockCustomFd;
+
+struct UsockCustomFd
+{
+    UsockCustomFd *next;
+    int fd;
+};
+
 struct UsockEvent
 {
     UsockEventType type;
@@ -27,6 +35,7 @@ struct UsockService
     const char *path;
     int fd;
     UsockClient *clients;
+    UsockCustomFd *customFds;
 };
 
 UsockService *
@@ -48,8 +57,52 @@ UsockService_Create(const char *path)
     self->path = path;
     self->fd = fd;
     self->clients = 0;
+    self->customFds = 0;
 
     return self;
+}
+
+void
+UsockService_RegisterCustomFd(UsockService *self, int fd)
+{
+    UsockCustomFd *customFd = malloc(sizeof(UsockCustomFd));
+    customFd->next = 0;
+    customFd->fd = fd;
+
+    if (self->customFds)
+    {
+	UsockCustomFd *prev = self->customFds;
+	while (prev->next) prev = prev->next;
+	prev->next = customFd;
+    }
+    else
+    {
+	self->customFds = customFd;
+    }
+}
+
+void
+UsockService_UnregisterCustomFd(UsockService *self, int fd)
+{
+    UsockCustomFd *prev = 0;
+    UsockCustomFd *curr = self->customFds;
+
+    while (curr)
+    {
+	if (curr->fd == fd)
+	{
+	    if (prev) prev->next = curr->next;
+	    else self->customFds = curr->next;
+	    prev = curr->next;
+	    free(curr);
+	    curr = prev;
+	}
+	else
+	{
+	    prev = curr;
+	    curr = curr->next;
+	}
+    }
 }
 
 static UsockClient *
@@ -91,6 +144,18 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 	}
     }
 
+    UsockCustomFd *cfd = self->customFds;
+    while (cfd)
+    {
+	if (FD_ISSET(cfd->fd, &(ev->fds)))
+	{
+	    FD_CLR(cfd->fd, &(ev->fds));
+	    ev->fd = cfd->fd;
+	    ev->type = UET_CustomFd;
+	    return;
+	}
+    }
+
     UsockClient *c = self->clients;
     while (c)
     {
@@ -124,6 +189,14 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
 	FD_SET(c->fd, &(ev->fds));
 	nfds = c->fd > nfds ? c->fd : nfds;
 	c = c->next;
+    }
+
+    UsockCustomFd *cfd = self->customFds;
+    while (cfd)
+    {
+	FD_SET(cfd->fd, &(ev->fds));
+	nfds = cfd->fd > nfds ? cfd->fd : nfds;
+	cfd = cfd->next;
     }
 
     select(nfds+1, &(ev->fds), 0, 0, 0);
