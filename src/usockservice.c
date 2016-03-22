@@ -130,6 +130,29 @@ UsockService_Accept(UsockService *self)
 }
 
 static void
+UsockService_Disconnect(UsockService *self, UsockClient *client)
+{
+    close(client->fd);
+    if (self->clients == client)
+    {
+	self->clients = client->next;
+    }
+    else
+    {
+	UsockClient *prev = self->clients;
+	while (prev)
+	{
+	    if (prev->next == client)
+	    {
+		prev->next = client->next;
+		break;
+	    }
+	}
+    }
+    free(client);
+}
+
+static void
 UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 {
     if (FD_ISSET(self->fd, &(ev->fds)))
@@ -162,9 +185,17 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 	if (FD_ISSET(c->fd, &(ev->fds)))
 	{
 	    FD_CLR(c->fd, &(ev->fds));
-	    ev->fd = c->fd;
-	    ev->type = UET_ClientData;
-	    return;
+	    char buf[32];
+	    if (recv(c->fd, buf, sizeof(buf), MSG_PEEK|MSG_DONTWAIT) > 0)
+	    {
+		ev->fd = c->fd;
+		ev->type = UET_ClientData;
+		return;
+	    }
+	    else
+	    {
+		UsockService_Disconnect(self, c);
+	    }
 	}
     }
 
@@ -177,28 +208,29 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
     int nfds = 0;
 
     UsockService_NextEvent(self, ev);
-    if (ev->type != UET_None) return;
-
-    FD_ZERO(&(ev->fds));
-    FD_SET(self->fd, &(ev->fds));
-    nfds = self->fd;
-
-    UsockClient *c = self->clients;
-    while (c)
+    while (ev->type == UET_None)
     {
-	FD_SET(c->fd, &(ev->fds));
-	nfds = c->fd > nfds ? c->fd : nfds;
-	c = c->next;
-    }
+	FD_ZERO(&(ev->fds));
+	FD_SET(self->fd, &(ev->fds));
+	nfds = self->fd;
 
-    UsockCustomFd *cfd = self->customFds;
-    while (cfd)
-    {
-	FD_SET(cfd->fd, &(ev->fds));
-	nfds = cfd->fd > nfds ? cfd->fd : nfds;
-	cfd = cfd->next;
-    }
+	UsockClient *c = self->clients;
+	while (c)
+	{
+	    FD_SET(c->fd, &(ev->fds));
+	    nfds = c->fd > nfds ? c->fd : nfds;
+	    c = c->next;
+	}
 
-    select(nfds+1, &(ev->fds), 0, 0, 0);
-    UsockService_NextEvent(self, ev);
+	UsockCustomFd *cfd = self->customFds;
+	while (cfd)
+	{
+	    FD_SET(cfd->fd, &(ev->fds));
+	    nfds = cfd->fd > nfds ? cfd->fd : nfds;
+	    cfd = cfd->next;
+	}
+
+	select(nfds+1, &(ev->fds), 0, 0, 0);
+	UsockService_NextEvent(self, ev);
+    }
 }
