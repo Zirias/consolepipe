@@ -2,7 +2,7 @@ BINS:= bin/consolepipe bin/pipewrite
 
 all: $(BINS)
 
-bin/consolepipe: src/consolepipe.c
+bin/consolepipe: src/consolepipe.c src/usockservice.c
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o$@ -lcurses $>
 
