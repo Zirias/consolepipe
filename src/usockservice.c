@@ -272,5 +272,7 @@ UsockService_Destroy(UsockService *self)
 	free(cfd);
     }
 
+    close(self->fd);
+    unlink(self->path);
     free(self);
 }
