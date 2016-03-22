@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -52,6 +53,7 @@ UsockService_Create(const char *path)
     strcpy(addr.sun_path, path);
 
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) return 0;
+    chmod(path, 0660);
     if (listen(fd, 16) < 0) return 0;
 
     UsockService *self = malloc(sizeof(UsockService));

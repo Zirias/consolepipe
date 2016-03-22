@@ -52,6 +52,7 @@ int main(int argc, char **argv)
 	    {
 		UsockService_Broadcast(usock, buf, strlen(buf));
 	    }
+	    else break;
 	}
     }
 
