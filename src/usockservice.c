@@ -234,3 +234,43 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
 	UsockService_NextEvent(self, ev);
     }
 }
+
+void
+UsockService_Broadcast(UsockService *self, const char *buf, size_t length)
+{
+    UsockClient *client = self->clients;
+    while (client)
+    {
+	UsockClient *c = client;
+	client = client->next;
+	if (send(c->fd, buf, length, 0) < 0)
+	{
+	    UsockService_Disconnect(self, c);
+	}
+    }
+}
+
+void
+UsockService_Destroy(UsockService *self)
+{
+    if (!self) return;
+
+    UsockClient *client = self->clients;
+    while (client)
+    {
+	UsockClient *c = client;
+	client = client->next;
+	close(c->fd);
+	free(c);
+    }
+
+    UsockCustomFd *customFd = self->customFds;
+    while (customFd)
+    {
+	UsockCustomFd *cfd = customFd;
+	customFd = customFd->next;
+	free(cfd);
+    }
+
+    free(self);
+}
