@@ -20,5 +20,7 @@ the profile as title. Using that, it's for example possible to keep the window
 in the background all the time, to have it without decorations, to hide it
 from the taskbar, and so on ...
 
-For a screenshot,
-[see this forum post](https://forums.freebsd.org/threads/55573/) for now.
+![xcons-0.1 in konsole on kde4](
+https://raw.githubusercontent.com/Zirias/xcons/files/xcons-0.1_kde4.png)
+This screenshot shows `xcons_curses` running in a `konsole` on kde4 (at the
+bottom of the desktop)
