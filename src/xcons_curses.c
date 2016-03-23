@@ -14,13 +14,39 @@
 char buf[1024];
 sig_atomic_t running = 1;
 
+typedef struct SocketFile
+{
+    int fd;
+    char *bufptr;
+    int bufbytes;
+    char buf[1024];
+} SocketFile;
+
+static SocketFile *
+SocketFile_Open(int fd)
+{
+    SocketFile *self = malloc(sizeof(SocketFile));
+    self->fd = fd;
+    self->bufptr = self->buf;
+    self->bufbytes = 0;
+    return self;
+}
+
+static void
+SocketFile_Close(SocketFile *self)
+{
+    if (!self) return;
+    close(self->fd);
+    free(self);
+}
+
 static void sighdl(int signum)
 {
     (void)signum;
     running = 0;
 }
 
-static FILE *
+static SocketFile *
 openSocketReader(const char *path)
 {
     int fd = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -32,11 +58,74 @@ openSocketReader(const char *path)
     strcpy(addr.sun_path, path);
 
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) return 0;
-    return fdopen(fd, "r");
+    return SocketFile_Open(fd);
+}
+
+static int
+_readLineIntr_bufcopy(char *s, int maxlen, SocketFile *sock)
+{
+    int to_go = sock->bufbytes < maxlen ? sock->bufbytes : maxlen;
+    int copied = 0;
+    while (to_go)
+    {
+	char c = *(sock->bufptr++);
+	--sock->bufbytes;
+	*s++ = c;
+	--to_go;
+	++copied;
+	if (c == '\n') break;
+    }
+    return copied;
+}
+
+static char *
+readLineIntr(char *s, int size, SocketFile *sock, sig_atomic_t *running)
+{
+    int len = 0;
+    int max = size-1;
+
+    while (1)
+    {
+        if (sock->bufbytes)
+        {
+            int copied = _readLineIntr_bufcopy(s+len, max, sock);
+            len +=copied;
+            max -= copied;
+            if (!max || s[len-1] == '\n')
+            {
+                s[len] = 0;
+                return s;
+            }
+        }
+
+	sigset_t sigmask;
+	sigset_t blockall;
+	sigfillset(&blockall);
+	sigprocmask(SIG_SETMASK, &blockall, &sigmask);
+	if (running && !*running)
+	{
+	    sigprocmask(SIG_SETMASK, &sigmask, 0);
+	    return 0;
+	}
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(sock->fd, &fds);
+	pselect(sock->fd+1, &fds, 0, 0, 0, &sigmask);
+	sigprocmask(SIG_SETMASK, &sigmask, 0);
+	if (running && !*running) return 0;
+	sock->bufptr = sock->buf;
+	sock->bufbytes = (int) read(sock->fd, sock->buf, 1024);
+    }
 }
 
 int main(int argc, char **argv)
 {
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    sigdelset(&sigmask, SIGTERM);
+    sigdelset(&sigmask, SIGINT);
+    sigprocmask(SIG_SETMASK, &sigmask, 0);
+
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = sighdl;
@@ -71,7 +160,7 @@ int main(int argc, char **argv)
     }
 
 
-    FILE *consoleLog;
+    SocketFile *consoleLog;
     int failcount = 0;
     while (running)
     {
@@ -96,7 +185,7 @@ int main(int argc, char **argv)
         }
 
 	failcount = 0;
-        while (fgets(buf, 1024, consoleLog))
+        while (readLineIntr(buf, 1024, consoleLog, &running))
         {
 	    void *iskern = strstr(buf, " kernel: ");
 	    if (iskern) attrset(krnlhl);
@@ -104,10 +193,11 @@ int main(int argc, char **argv)
 	    if (iskern) attrset(A_NORMAL);
             refresh();
         }
-        fclose(consoleLog);
+        SocketFile_Close(consoleLog);
+	consoleLog = 0;
     }
 
     endwin();
-    if (consoleLog) fclose(consoleLog);
+    if (consoleLog) SocketFile_Close(consoleLog);
 }
 
