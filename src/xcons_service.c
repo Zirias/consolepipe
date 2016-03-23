@@ -13,7 +13,7 @@ static void sighdl(int signum)
 {
     if (signum != SIGALRM)
     {
-	running = 0;
+        running = 0;
     }
 }
 
@@ -49,15 +49,15 @@ int main(int argc, char **argv)
     UsockEvent *ev = UsockEvent_Create();
     while (running)
     {
-	UsockService_PollEvent(usock, ev, &running);
-	if (running && UsockEvent_Type(ev) == UET_CustomFd)
-	{
-	    if (fgets(buf, 1024, stdin))
-	    {
-		UsockService_Broadcast(usock, buf, strlen(buf));
-	    }
-	    else break;
-	}
+        UsockService_PollEvent(usock, ev, &running);
+        if (running && UsockEvent_Type(ev) == UET_CustomFd)
+        {
+            if (fgets(buf, 1024, stdin))
+            {
+                UsockService_Broadcast(usock, buf, strlen(buf));
+            }
+            else break;
+        }
     }
 
 cleanup:

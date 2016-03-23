@@ -74,13 +74,13 @@ UsockService_RegisterCustomFd(UsockService *self, int fd)
 
     if (self->customFds)
     {
-	UsockCustomFd *prev = self->customFds;
-	while (prev->next) prev = prev->next;
-	prev->next = customFd;
+        UsockCustomFd *prev = self->customFds;
+        while (prev->next) prev = prev->next;
+        prev->next = customFd;
     }
     else
     {
-	self->customFds = customFd;
+        self->customFds = customFd;
     }
 }
 
@@ -92,19 +92,19 @@ UsockService_UnregisterCustomFd(UsockService *self, int fd)
 
     while (curr)
     {
-	if (curr->fd == fd)
-	{
-	    if (prev) prev->next = curr->next;
-	    else self->customFds = curr->next;
-	    prev = curr->next;
-	    free(curr);
-	    curr = prev;
-	}
-	else
-	{
-	    prev = curr;
-	    curr = curr->next;
-	}
+        if (curr->fd == fd)
+        {
+            if (prev) prev->next = curr->next;
+            else self->customFds = curr->next;
+            prev = curr->next;
+            free(curr);
+            curr = prev;
+        }
+        else
+        {
+            prev = curr;
+            curr = curr->next;
+        }
     }
 }
 
@@ -120,13 +120,13 @@ UsockService_Accept(UsockService *self)
 
     if (self->clients)
     {
-	UsockClient *prev = self->clients;
-	while (prev->next) prev = prev->next;
-	prev->next = client;
+        UsockClient *prev = self->clients;
+        while (prev->next) prev = prev->next;
+        prev->next = client;
     }
     else
     {
-	self->clients = client;
+        self->clients = client;
     }
 
     return client;
@@ -138,19 +138,19 @@ UsockService_Disconnect(UsockService *self, UsockClient *client)
     close(client->fd);
     if (self->clients == client)
     {
-	self->clients = client->next;
+        self->clients = client->next;
     }
     else
     {
-	UsockClient *prev = self->clients;
-	while (prev)
-	{
-	    if (prev->next == client)
-	    {
-		prev->next = client->next;
-		break;
-	    }
-	}
+        UsockClient *prev = self->clients;
+        while (prev)
+        {
+            if (prev->next == client)
+            {
+                prev->next = client->next;
+                break;
+            }
+        }
     }
     free(client);
 }
@@ -160,49 +160,49 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 {
     if (FD_ISSET(self->fd, &(ev->fds)))
     {
-	FD_CLR(self->fd, &(ev->fds));
-	UsockClient *c = UsockService_Accept(self);
-	if (c)
-	{
-	    ev->fd = c->fd;
-	    ev->type = UET_ClientConnected;
-	}
-	return;
+        FD_CLR(self->fd, &(ev->fds));
+        UsockClient *c = UsockService_Accept(self);
+        if (c)
+        {
+            ev->fd = c->fd;
+            ev->type = UET_ClientConnected;
+        }
+        return;
     }
 
     UsockCustomFd *cfd = self->customFds;
     while (cfd)
     {
-	if (FD_ISSET(cfd->fd, &(ev->fds)))
-	{
-	    FD_CLR(cfd->fd, &(ev->fds));
-	    ev->fd = cfd->fd;
-	    ev->type = UET_CustomFd;
-	    return;
-	}
-	cfd = cfd->next;
+        if (FD_ISSET(cfd->fd, &(ev->fds)))
+        {
+            FD_CLR(cfd->fd, &(ev->fds));
+            ev->fd = cfd->fd;
+            ev->type = UET_CustomFd;
+            return;
+        }
+        cfd = cfd->next;
     }
 
     UsockClient *client = self->clients;
     while (client)
     {
-	UsockClient *c = client;
-	client = client->next;
-	if (FD_ISSET(c->fd, &(ev->fds)))
-	{
-	    FD_CLR(c->fd, &(ev->fds));
-	    char buf[32];
-	    if (recv(c->fd, buf, sizeof(buf), MSG_PEEK|MSG_DONTWAIT) > 0)
-	    {
-		ev->fd = c->fd;
-		ev->type = UET_ClientData;
-		return;
-	    }
-	    else
-	    {
-		UsockService_Disconnect(self, c);
-	    }
-	}
+        UsockClient *c = client;
+        client = client->next;
+        if (FD_ISSET(c->fd, &(ev->fds)))
+        {
+            FD_CLR(c->fd, &(ev->fds));
+            char buf[32];
+            if (recv(c->fd, buf, sizeof(buf), MSG_PEEK|MSG_DONTWAIT) > 0)
+            {
+                ev->fd = c->fd;
+                ev->type = UET_ClientData;
+                return;
+            }
+            else
+            {
+                UsockService_Disconnect(self, c);
+            }
+        }
     }
 
     ev->type = UET_None;
@@ -210,7 +210,7 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 
 void
 UsockService_PollEvent(UsockService *self, UsockEvent *ev,
-	sig_atomic_t *running)
+        sig_atomic_t *running)
 {
     int nfds = 0;
 
@@ -218,40 +218,40 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev,
     if (running && !*running) return;
     while (ev->type == UET_None)
     {
-	FD_ZERO(&(ev->fds));
-	FD_SET(self->fd, &(ev->fds));
-	nfds = self->fd;
+        FD_ZERO(&(ev->fds));
+        FD_SET(self->fd, &(ev->fds));
+        nfds = self->fd;
 
-	UsockClient *c = self->clients;
-	while (c)
-	{
-	    FD_SET(c->fd, &(ev->fds));
-	    nfds = c->fd > nfds ? c->fd : nfds;
-	    c = c->next;
-	}
+        UsockClient *c = self->clients;
+        while (c)
+        {
+            FD_SET(c->fd, &(ev->fds));
+            nfds = c->fd > nfds ? c->fd : nfds;
+            c = c->next;
+        }
 
-	UsockCustomFd *cfd = self->customFds;
-	while (cfd)
-	{
-	    FD_SET(cfd->fd, &(ev->fds));
-	    nfds = cfd->fd > nfds ? cfd->fd : nfds;
-	    cfd = cfd->next;
-	}
+        UsockCustomFd *cfd = self->customFds;
+        while (cfd)
+        {
+            FD_SET(cfd->fd, &(ev->fds));
+            nfds = cfd->fd > nfds ? cfd->fd : nfds;
+            cfd = cfd->next;
+        }
 
-	sigset_t sigmask;
-	sigset_t blockall;
-	sigfillset(&blockall);
-	sigprocmask(SIG_SETMASK, &blockall, &sigmask);
-	if (running && !*running)
-	{
-	    sigprocmask(SIG_SETMASK, &sigmask, 0);
-	    return;
-	}
-	pselect(nfds+1, &(ev->fds), 0, 0, 0, &sigmask);
-	sigprocmask(SIG_SETMASK, &sigmask, 0);
-	if (running && !*running) return;
-	UsockService_NextEvent(self, ev);
-	if (running && !*running) return;
+        sigset_t sigmask;
+        sigset_t blockall;
+        sigfillset(&blockall);
+        sigprocmask(SIG_SETMASK, &blockall, &sigmask);
+        if (running && !*running)
+        {
+            sigprocmask(SIG_SETMASK, &sigmask, 0);
+            return;
+        }
+        pselect(nfds+1, &(ev->fds), 0, 0, 0, &sigmask);
+        sigprocmask(SIG_SETMASK, &sigmask, 0);
+        if (running && !*running) return;
+        UsockService_NextEvent(self, ev);
+        if (running && !*running) return;
     }
 }
 
@@ -261,13 +261,13 @@ UsockService_Broadcast(UsockService *self, const char *buf, size_t length)
     UsockClient *client = self->clients;
     while (client)
     {
-	UsockClient *c = client;
-	client = client->next;
-	if (send(c->fd, buf, length, 0) < 0)
-	{
-	    if (errno == EINTR) return;
-	    UsockService_Disconnect(self, c);
-	}
+        UsockClient *c = client;
+        client = client->next;
+        if (send(c->fd, buf, length, 0) < 0)
+        {
+            if (errno == EINTR) return;
+            UsockService_Disconnect(self, c);
+        }
     }
 }
 
@@ -279,18 +279,18 @@ UsockService_Destroy(UsockService *self)
     UsockClient *client = self->clients;
     while (client)
     {
-	UsockClient *c = client;
-	client = client->next;
-	close(c->fd);
-	free(c);
+        UsockClient *c = client;
+        client = client->next;
+        close(c->fd);
+        free(c);
     }
 
     UsockCustomFd *customFd = self->customFds;
     while (customFd)
     {
-	UsockCustomFd *cfd = customFd;
-	customFd = customFd->next;
-	free(cfd);
+        UsockCustomFd *cfd = customFd;
+        customFd = customFd->next;
+        free(cfd);
     }
 
     close(self->fd);

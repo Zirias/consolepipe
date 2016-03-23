@@ -44,7 +44,7 @@ static void sighdl(int signum)
 {
     if (signum != SIGALRM)
     {
-	running = 0;
+        running = 0;
     }
 }
 
@@ -70,12 +70,12 @@ _readLineIntr_bufcopy(char *s, int maxlen, SocketFile *sock)
     int copied = 0;
     while (to_go)
     {
-	char c = *(sock->bufptr++);
-	--sock->bufbytes;
-	*s++ = c;
-	--to_go;
-	++copied;
-	if (c == '\n') break;
+        char c = *(sock->bufptr++);
+        --sock->bufbytes;
+        *s++ = c;
+        --to_go;
+        ++copied;
+        if (c == '\n') break;
     }
     return copied;
 }
@@ -100,23 +100,23 @@ readLineIntr(char *s, int size, SocketFile *sock, sig_atomic_t *running)
             }
         }
 
-	sigset_t sigmask;
-	sigset_t blockall;
-	sigfillset(&blockall);
-	sigprocmask(SIG_SETMASK, &blockall, &sigmask);
-	if (running && !*running)
-	{
-	    sigprocmask(SIG_SETMASK, &sigmask, 0);
-	    return 0;
-	}
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(sock->fd, &fds);
-	pselect(sock->fd+1, &fds, 0, 0, 0, &sigmask);
-	sigprocmask(SIG_SETMASK, &sigmask, 0);
-	if (running && !*running) return 0;
-	sock->bufptr = sock->buf;
-	sock->bufbytes = (int) read(sock->fd, sock->buf, 1024);
+        sigset_t sigmask;
+        sigset_t blockall;
+        sigfillset(&blockall);
+        sigprocmask(SIG_SETMASK, &blockall, &sigmask);
+        if (running && !*running)
+        {
+            sigprocmask(SIG_SETMASK, &sigmask, 0);
+            return 0;
+        }
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(sock->fd, &fds);
+        pselect(sock->fd+1, &fds, 0, 0, 0, &sigmask);
+        sigprocmask(SIG_SETMASK, &sigmask, 0);
+        if (running && !*running) return 0;
+        sock->bufptr = sock->buf;
+        sock->bufbytes = (int) read(sock->fd, sock->buf, 1024);
     }
 }
 
@@ -133,13 +133,15 @@ int main(int argc, char **argv)
 
     if (argc != 2)
     {
-	fprintf(stderr, "Usage: %s /path/to/fifo\n", argv[0]);
-	return EXIT_FAILURE;
+        fprintf(stderr, "Usage: %s /path/to/fifo\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
     initscr();
     noecho();
+    cbreak();
     curs_set(0);
+    timeout(0);
     scrollok(stdscr, 1);
     clear();
     refresh();
@@ -148,16 +150,16 @@ int main(int argc, char **argv)
 
     if (has_colors())
     {
-	start_color();
-	if (use_default_colors() == ERR)
-	{
-	    init_pair(1, COLOR_BLACK, COLOR_WHITE);
-	}
-	else
-	{
-	    init_pair(1, COLOR_BLACK, -1);
-	}
-	krnlhl |= COLOR_PAIR(1);
+        start_color();
+        if (use_default_colors() == ERR)
+        {
+            init_pair(1, COLOR_BLACK, COLOR_WHITE);
+        }
+        else
+        {
+            init_pair(1, COLOR_BLACK, -1);
+        }
+        krnlhl |= COLOR_PAIR(1);
     }
 
 
@@ -166,7 +168,7 @@ int main(int argc, char **argv)
     while (running)
     {
         consoleLog = openSocketReader(argv[1]);
-	if (!running) break;
+        if (!running) break;
 
         if (!consoleLog)
         {
@@ -178,26 +180,28 @@ int main(int argc, char **argv)
                 printw("ERROR: cannot open socket `%s' for reading: %s\n",
                         argv[1], strerror(errno));
                 standend();
-		refresh();
+                refresh();
             }
             sleep(1);
-	    if (!running) break;
+            if (!running) break;
             continue;
         }
 
-	failcount = 0;
+        failcount = 0;
         while (readLineIntr(buf, 1024, consoleLog, &running))
         {
-	    void *iskern = strstr(buf, " kernel: ");
-	    if (iskern) attrset(krnlhl);
+            void *iskern = strstr(buf, " kernel: ");
+            if (iskern) attrset(krnlhl);
             addstr(buf);
-	    if (iskern) attrset(A_NORMAL);
+            if (iskern) attrset(A_NORMAL);
             refresh();
+            while (getch() != ERR);
         }
         SocketFile_Close(consoleLog);
-	consoleLog = 0;
+        consoleLog = 0;
     }
 
+    while (getch() != ERR);
     endwin();
     if (consoleLog) SocketFile_Close(consoleLog);
 }
