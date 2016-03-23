@@ -1,14 +1,17 @@
 BINS:= bin/xcons_service bin/xcons_curses
 
+XCONS_CURSES_SRC:= src/xcons_curses.c
+XCONS_SERVICE_SRC:= src/xcons_service.c src/usockservice.c
+
 all: $(BINS)
 
-bin/xcons_curses: src/xcons_curses.c
+bin/xcons_curses: $(XCONS_CURSES_SRC)
 	@mkdir -p bin
-	$(CC) $(CFLAGS) -o$@ -lcurses $>
+	$(CC) $(CFLAGS) -o$@ -lcurses $(XCONS_CURSES_SRC)
 
-bin/xcons_service: src/xcons_service.c src/usockservice.c
+bin/xcons_service: $(XCONS_SERVICE_SRC)
 	@mkdir -p bin
-	$(CC) $(CFLAGS) -o$@ $>
+	$(CC) $(CFLAGS) -o$@ $(XCONS_SERVICE_SRC)
 
 strip: $(BINS)
 	strip --strip-all $(BINS)
