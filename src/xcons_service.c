@@ -17,6 +17,13 @@ static void sighdl(int signum)
 
 int main(int argc, char **argv)
 {
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    sigdelset(&sigmask, SIGPIPE);
+    sigdelset(&sigmask, SIGTERM);
+    sigdelset(&sigmask, SIGINT);
+    sigprocmask(SIG_SETMASK, &sigmask, 0);
+
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = sighdl;
@@ -45,7 +52,7 @@ int main(int argc, char **argv)
     UsockEvent *ev = UsockEvent_Create();
     while (running)
     {
-	UsockService_PollEvent(usock, ev);
+	UsockService_PollEvent(usock, ev, &running);
 	if (running && UsockEvent_Type(ev) == UET_CustomFd)
 	{
 	    if (fgets(buf, 1024, stdin))

@@ -2,6 +2,7 @@
 #define USOCK_SERVICE_H
 
 #include <stdlib.h>
+#include <signal.h>
 
 typedef enum UsockEventType
 {
@@ -17,7 +18,8 @@ typedef struct UsockEvent UsockEvent;
 UsockService *UsockService_Create(const char *path);
 void UsockService_RegisterCustomFd(UsockService *self, int fd);
 void UsockService_UnregisterCustomFd(UsockService *self, int fd);
-void UsockService_PollEvent(UsockService *self, UsockEvent *ev);
+void UsockService_PollEvent(UsockService *self, UsockEvent *ev,
+	sig_atomic_t *running);
 void UsockService_Broadcast(UsockService *self, const char *buf, size_t length);
 void UsockService_Destroy(UsockService *self);
 

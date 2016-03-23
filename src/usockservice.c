@@ -198,11 +198,10 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 		ev->type = UET_ClientData;
 		return;
 	    }
-	    else if (errno != EINTR)
+	    else
 	    {
 		UsockService_Disconnect(self, c);
 	    }
-	    else return;
 	}
     }
 
@@ -210,12 +209,13 @@ UsockService_NextEvent(UsockService *self, UsockEvent *ev)
 }
 
 void
-UsockService_PollEvent(UsockService *self, UsockEvent *ev)
+UsockService_PollEvent(UsockService *self, UsockEvent *ev,
+	sig_atomic_t *running)
 {
     int nfds = 0;
 
     UsockService_NextEvent(self, ev);
-    if (errno == EINTR) return;
+    if (running && !*running) return;
     while (ev->type == UET_None)
     {
 	FD_ZERO(&(ev->fds));
@@ -238,10 +238,20 @@ UsockService_PollEvent(UsockService *self, UsockEvent *ev)
 	    cfd = cfd->next;
 	}
 
-	select(nfds+1, &(ev->fds), 0, 0, 0);
-	if (errno == EINTR) return;
+	sigset_t sigmask;
+	sigset_t blockall;
+	sigfillset(&blockall);
+	sigprocmask(SIG_SETMASK, &blockall, &sigmask);
+	if (running && !*running)
+	{
+	    sigprocmask(SIG_SETMASK, &sigmask, 0);
+	    return;
+	}
+	pselect(nfds+1, &(ev->fds), 0, 0, 0, &sigmask);
+	sigprocmask(SIG_SETMASK, &sigmask, 0);
+	if (running && !*running) return;
 	UsockService_NextEvent(self, ev);
-	if (errno == EINTR) return;
+	if (running && !*running) return;
     }
 }
 
