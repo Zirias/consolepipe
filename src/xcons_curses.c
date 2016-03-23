@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	failcount = 0;
         while (fgets(buf, 1024, consoleLog))
         {
-	    int iskern = (int)strstr(buf, " kernel: ");
+	    void *iskern = strstr(buf, " kernel: ");
 	    if (iskern) attrset(krnlhl);
             addstr(buf);
 	    if (iskern) attrset(A_NORMAL);
