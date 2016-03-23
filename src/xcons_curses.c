@@ -42,8 +42,10 @@ SocketFile_Close(SocketFile *self)
 
 static void sighdl(int signum)
 {
-    (void)signum;
-    running = 0;
+    if (signum != SIGALRM)
+    {
+	running = 0;
+    }
 }
 
 static SocketFile *
@@ -120,17 +122,14 @@ readLineIntr(char *s, int size, SocketFile *sock, sig_atomic_t *running)
 
 int main(int argc, char **argv)
 {
-    sigset_t sigmask;
-    sigfillset(&sigmask);
-    sigdelset(&sigmask, SIGTERM);
-    sigdelset(&sigmask, SIGINT);
-    sigprocmask(SIG_SETMASK, &sigmask, 0);
-
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = sighdl;
-    sigaction(SIGTERM, &sigact, NULL);
+    sigaction(SIGHUP, &sigact, NULL);
     sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGPIPE, &sigact, NULL);
+    sigaction(SIGALRM, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
 
     if (argc != 2)
     {
@@ -142,6 +141,8 @@ int main(int argc, char **argv)
     noecho();
     curs_set(0);
     scrollok(stdscr, 1);
+    clear();
+    refresh();
 
     int krnlhl = A_BOLD;
 

@@ -11,25 +11,22 @@ sig_atomic_t running = 1;
 
 static void sighdl(int signum)
 {
-    (void)signum;
-    running = 0;
+    if (signum != SIGALRM)
+    {
+	running = 0;
+    }
 }
 
 int main(int argc, char **argv)
 {
-    sigset_t sigmask;
-    sigfillset(&sigmask);
-    sigdelset(&sigmask, SIGPIPE);
-    sigdelset(&sigmask, SIGTERM);
-    sigdelset(&sigmask, SIGINT);
-    sigprocmask(SIG_SETMASK, &sigmask, 0);
-
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = sighdl;
-    sigaction(SIGPIPE, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
+    sigaction(SIGHUP, &sigact, NULL);
     sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGPIPE, &sigact, NULL);
+    sigaction(SIGALRM, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
 
     int rc = EXIT_SUCCESS;
 

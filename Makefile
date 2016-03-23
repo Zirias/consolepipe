@@ -1,3 +1,10 @@
+prefix?=/usr/local
+bindir?=$(prefix)/bin
+
+CC?=cc
+CFLAGS?=-O3 -pipe
+INSTALL?=install
+
 BINS:= bin/xcons_service bin/xcons_curses
 
 XCONS_CURSES_SRC:= src/xcons_curses.c
@@ -16,8 +23,14 @@ bin/xcons_service: $(XCONS_SERVICE_SRC)
 strip: $(BINS)
 	strip --strip-all $(BINS)
 
+install: $(BINS)
+	$(INSTALL) -d $(bindir)
+	$(INSTALL) -m 755 $(BINS) $(bindir)
+
+install-strip: strip install
+
 clean:
 	rm -fr bin
 
-.PHONY: all strip clean
+.PHONY: all strip install install-strip clean
 
