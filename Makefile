@@ -24,8 +24,8 @@ strip: $(BINS)
 	strip --strip-all $(BINS)
 
 install: $(BINS)
-	$(INSTALL) -d $(bindir)
-	$(INSTALL) -m 755 $(BINS) $(bindir)
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -m 755 $(BINS) $(DESTDIR)$(bindir)
 
 install-strip: strip install
 
