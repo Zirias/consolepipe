@@ -117,6 +117,11 @@ readLineIntr(char *s, int size, SocketFile *sock, sig_atomic_t *running)
         if (running && !*running) return 0;
         sock->bufptr = sock->buf;
         sock->bufbytes = (int) read(sock->fd, sock->buf, 1024);
+	if (sock->bufbytes <= 0)
+	{
+	    sock->bufbytes = 0;
+	    return 0;
+	}
     }
 }
 
