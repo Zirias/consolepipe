@@ -136,10 +136,19 @@ int main(int argc, char **argv)
     sigaction(SIGALRM, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
-    if (argc != 2)
+    const char *sockpath;
+    if (argc > 2)
     {
-        fprintf(stderr, "Usage: %s /path/to/fifo\n", argv[0]);
+        fprintf(stderr, "Usage: %s [/path/to/socket]\n", argv[0]);
         return EXIT_FAILURE;
+    }
+    else if (argc == 2)
+    {
+	sockpath = argv[1];
+    }
+    else
+    {
+	sockpath = runstatedir "/xcons.sock";
     }
 
     initscr();
@@ -172,7 +181,7 @@ int main(int argc, char **argv)
     int failcount = 0;
     while (running)
     {
-        consoleLog = openSocketReader(argv[1]);
+        consoleLog = openSocketReader(sockpath);
         if (!running) break;
 
         if (!consoleLog)
@@ -183,7 +192,7 @@ int main(int argc, char **argv)
                 failcount = ERR_SECONDS;
                 standout();
                 printw("ERROR: cannot open socket `%s' for reading: %s\n",
-                        argv[1], strerror(errno));
+                        sockpath, strerror(errno));
                 standend();
                 refresh();
             }

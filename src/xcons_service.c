@@ -28,19 +28,26 @@ int main(int argc, char **argv)
     sigaction(SIGALRM, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
-    int rc = EXIT_SUCCESS;
-
-    if (argc != 2)
+    const char *sockpath;
+    if (argc > 2)
     {
-        fprintf(stderr, "Usage: %s /path/to/socket\n", argv[0]);
+        fprintf(stderr, "Usage: %s [/path/to/socket]\n", argv[0]);
         return EXIT_FAILURE;
     }
+    else if (argc == 2)
+    {
+	sockpath = argv[1];
+    }
+    else
+    {
+	sockpath = runstatedir "/xcons.sock";
+    }
 
-    UsockService *usock = UsockService_Create(argv[1]);
+    UsockService *usock = UsockService_Create(sockpath);
     if (!usock)
     {
         fprintf(stderr, "Cannot open socket `%s': %s\n",
-                argv[1], strerror(errno));
+                sockpath, strerror(errno));
         return EXIT_FAILURE;
     }
 
@@ -60,9 +67,8 @@ int main(int argc, char **argv)
         }
     }
 
-cleanup:
     UsockEvent_Destroy(ev);
     UsockService_Destroy(usock);
-    return rc;
+    return EXIT_SUCCESS;
 }
 

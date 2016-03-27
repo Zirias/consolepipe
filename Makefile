@@ -1,11 +1,13 @@
 prefix?=/usr/local
 bindir?=$(prefix)/bin
+localstatedir?=$(prefix)/var
+runstatedir?=$(localstatedir)/run
 
 CC?=cc
 CFLAGS?=-O2 -pipe
 INSTALL?=install
 
-DEFINES+=-Dprefix=$(prefix)
+DEFINES+=-Drunstatedir=\"$(runstatedir)\"
 
 BINS:= bin/xcons_service bin/xcons_curses
 
