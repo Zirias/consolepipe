@@ -9,8 +9,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define ERR_SECONDS 60
-
 char buf[1024];
 sig_atomic_t running = 1;
 
@@ -178,7 +176,7 @@ int main(int argc, char **argv)
 
 
     SocketFile *consoleLog;
-    int failcount = 0;
+    int lasterr = 0;
     while (running)
     {
         consoleLog = openSocketReader(sockpath);
@@ -186,22 +184,27 @@ int main(int argc, char **argv)
 
         if (!consoleLog)
         {
-            if (failcount) --failcount;
-            else
-            {
-                failcount = ERR_SECONDS;
-                standout();
-                printw("ERROR: cannot open socket `%s' for reading: %s\n",
-                        sockpath, strerror(errno));
-                standend();
-                refresh();
-            }
+	    if (errno != lasterr)
+	    {
+		lasterr = errno;
+		standout();
+		printw("[xcons] error connecting to `%s': %s\n",
+			sockpath, strerror(lasterr));
+		standend();
+		refresh();
+	    }
             sleep(1);
             if (!running) break;
             continue;
         }
 
-        failcount = 0;
+	if (lasterr)
+	{
+	    lasterr = 0;
+	    printw("[xcons] (re-)connected to `%s'.\n", sockpath);
+	    refresh();
+	}
+
         while (readLineIntr(buf, 1024, consoleLog, &running))
         {
             void *iskern = strstr(buf, " kernel: ");
@@ -213,6 +216,8 @@ int main(int argc, char **argv)
         }
         SocketFile_Close(consoleLog);
         consoleLog = 0;
+	printw("[xcons] connection to `%s' lost.\n", sockpath);
+	refresh();
     }
 
     while (getch() != ERR);
