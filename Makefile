@@ -51,6 +51,7 @@ strip: $(BINS)
 
 install: $(BINS)
 	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -d $(DESTDIR)$(runstatedir)
 	$(INSTALL) -m 755 $(BINS) $(DESTDIR)$(bindir)
 
 install-strip: strip install
