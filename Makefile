@@ -11,7 +11,7 @@ DEFINES+=-Drunstatedir=\"$(runstatedir)\"
 
 BINS:= bin/xcons_service bin/xcons_curses
 
-curses_OBJS:= src/xcons_curses.o
+curses_OBJS:= src/xcons_curses.o src/usockclient.o
 service_OBJS:= src/xcons_service.o src/usockservice.o
 
 OBJS:= $(curses_OBJS) $(service_OBJS)
